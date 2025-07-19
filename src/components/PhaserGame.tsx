@@ -1,11 +1,15 @@
 import React, { useEffect, useRef } from 'react';
 import Phaser from 'phaser';
 import { GameScene } from '../phaser/scenes/GameScene';
+import { io, Socket } from 'socket.io-client';
 
 export const PhaserGame: React.FC = () => {
   const gameRef = useRef<Phaser.Game | null>(null);
+  const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
+    socketRef.current = io('http://localhost:3000');
+
     const config: Phaser.Types.Core.GameConfig = {
       type: Phaser.AUTO,
       parent: 'phaser-container',
@@ -30,5 +34,5 @@ export const PhaserGame: React.FC = () => {
     };
   }, []);
 
-  return <div id="phaser-container"/>;
+  return <div id="phaser-container" />;
 };
