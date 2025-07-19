@@ -3,6 +3,8 @@ import {
   PLAYER_SPEED,
   PLAYER_SPRITE_WIDTH,
   PLAYER_SPRITE_HEIGHT,
+  COLLISION_LAYER_VISIBLE,
+  CAMERA_ZOOM,
 } from "../constants";
 
 export class GameScene extends Phaser.Scene {
@@ -14,7 +16,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   preload() {
-    this.load.image("map", "assets/my-map.png");
+    this.load.tilemapTiledJSON("map", "assets/my-map.json");
+    this.load.image("tiles", "assets/pokemon-12.png");
+    this.load.image("collision", "assets/collision.png");
+
     this.load.spritesheet("player", "assets/my-sprite.png", {
       frameWidth: PLAYER_SPRITE_WIDTH,
       frameHeight: PLAYER_SPRITE_HEIGHT,
@@ -22,17 +27,57 @@ export class GameScene extends Phaser.Scene {
   }
 
   create() {
-    const map = this.add.image(0, 0, "map").setOrigin(0, 0);
+    const map = this.make.tilemap({ key: "map" });
 
-    this.player = this.physics.add.sprite(516, 230, "player", 0);
-    this.player.setScale(0.25);
+    if (!map) {
+      console.error("Tilemap not found!");
+      return;
+    }
+
+    const tileset = map.addTilesetImage("pokemon-12", "tiles");
+    const collisionTileset = map.addTilesetImage("collision", "collision");
+
+    if (!tileset || !collisionTileset) {
+      console.error("Tileset not found!");
+      return;
+    }
+
+    map.layers.forEach((layerData: any) => {
+      if (layerData.name !== "collision" && layerData.name !== "foreground") {
+        const layer = map.createLayer(layerData.name, tileset, 0, 0);
+        if (!layer) console.error("Ground layer not found!");
+      }
+    });
+
+    const collisionLayer = map.createLayer("collision", collisionTileset, 0, 0);
+
+    if (!collisionLayer) {
+      console.error("Collision layer not found!");
+      return;
+    }
+
+    collisionLayer.setVisible(COLLISION_LAYER_VISIBLE);
+    collisionLayer.setCollisionByProperty({ collides: true });
+
+    const spawnPoint = map.findObject("spawns", (obj) => obj.name === "playerSpawn");
+    const playerX = spawnPoint ? spawnPoint.x || 516 : 516;
+    const playerY = spawnPoint ? spawnPoint.y || 230 : 230;
+
+    this.player = this.physics.add.sprite(playerX, playerY, "player", 0);
+    this.player.setScale(0.17);
 
     if (this.input.keyboard)
       this.cursors = this.input.keyboard.createCursorKeys();
 
-    this.physics.world.setBounds(0, 0, map.width, map.height);
-    this.player.setCollideWorldBounds(true);
-    
+    this.physics.add.collider(this.player, collisionLayer);
+
+    const foregroundLayer = map.createLayer("foreground", tileset, 0, 0);
+    if (!foregroundLayer) {
+      console.error("Foreground layer not found!");
+      return;
+    }
+    foregroundLayer.setDepth(10);
+
     // Player Animations
     this.anims.create({
       key: "down",
@@ -63,9 +108,11 @@ export class GameScene extends Phaser.Scene {
     });
 
     // Camera setup
+    this.physics.world.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
+    this.player.setCollideWorldBounds(true);
+    this.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
     this.cameras.main.startFollow(this.player, true);
-    this.cameras.main.setBounds(0, 0, map.width, map.height);
-    this.cameras.main.setZoom(3);
+    this.cameras.main.setZoom(CAMERA_ZOOM);
   }
 
   update() {
