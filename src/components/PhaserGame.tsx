@@ -1,11 +1,16 @@
 import React, { useEffect, useRef } from 'react';
 import Phaser from 'phaser';
 import { GameScene } from '../phaser/scenes/GameScene';
+import { io, Socket } from 'socket.io-client';
 
 export const PhaserGame: React.FC = () => {
   const gameRef = useRef<Phaser.Game | null>(null);
+  const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
+    socketRef.current = io('http://localhost:3000');
+    const socket = socketRef.current;
+
     const config: Phaser.Types.Core.GameConfig = {
       type: Phaser.AUTO,
       parent: 'phaser-container',
@@ -19,16 +24,17 @@ export const PhaserGame: React.FC = () => {
           debug: false,
         },
       },
-      scene: [GameScene],
+      scene: new GameScene(socket),
     };
 
     gameRef.current = new Phaser.Game(config);
 
     return () => {
+      socket.disconnect();
       gameRef.current?.destroy(true);
       gameRef.current = null;
     };
   }, []);
 
-  return <div id="phaser-container"/>;
+  return <div id="phaser-container" />;
 };
