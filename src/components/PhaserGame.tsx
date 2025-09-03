@@ -9,6 +9,7 @@ export const PhaserGame: React.FC = () => {
 
   useEffect(() => {
     socketRef.current = io('http://localhost:3000');
+    const socket = socketRef.current;
 
     const config: Phaser.Types.Core.GameConfig = {
       type: Phaser.AUTO,
@@ -23,12 +24,13 @@ export const PhaserGame: React.FC = () => {
           debug: false,
         },
       },
-      scene: [GameScene],
+      scene: new GameScene(socket),
     };
 
     gameRef.current = new Phaser.Game(config);
 
     return () => {
+      socket.disconnect();
       gameRef.current?.destroy(true);
       gameRef.current = null;
     };
